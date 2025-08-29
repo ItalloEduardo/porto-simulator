@@ -55,7 +55,7 @@ def run_port_simulation(params: SimulationParams) -> SimulationResult:
     env.run(until=params.tempo_total_simulacao)
     log_eventos.sort(key=lambda e: e.tempo)
     
-    # 6. Calcula estatísticas finais a partir do log
+    # Calcula estatísticas finais a partir do log
     tempos_de_espera = [e.detalhes["tempo_de_espera"] for e in log_eventos if e.evento == "atracou"]
     tempo_medio_espera = sum(tempos_de_espera) / len(tempos_de_espera) if tempos_de_espera else 0
     
