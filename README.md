@@ -66,6 +66,4 @@ O código-fonte está organizado da seguinte forma:
     uvicorn app.main:app --reload
     ```
 
-> 
 > Coded by `@ItalloEduardo`
-> 
