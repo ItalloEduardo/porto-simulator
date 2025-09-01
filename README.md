@@ -32,13 +32,14 @@ O código-fonte está organizado da seguinte forma:
  ┃ ┣ 📂src
  ┃ ┃ ┣ 📂assets
  ┃ ┃ ┣ 📂components
+ ┃ ┃ ┃ ┣ 📜Header.jsx
  ┃ ┃ ┃ ┣ 📜Controls.jsx
  ┃ ┃ ┃ ┣ 📜Game.jsx
  ┃ ┃ ┃ ┗ 📜Stats.jsx
  ┃ ┃ ┣ 📂screens
  ┃ ┃ ┃ ┗ 📜Home.jsx
  ┃ ┃ ┣ 📂styles
- ┃ ┃ ┃ ┗ 📜index.css
+ ┃ ┃ ┃ ┗ 📜global.css
  ┃ ┃ ┗ 📜App.jsx
  ┗ 📜README.md
 ```

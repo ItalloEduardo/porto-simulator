@@ -22,7 +22,7 @@ export default function Header() {
         </svg>
 
         <h1 className="text-3xl font-bold text-slate-100 tracking-wider">
-          Simulador de Porto
+          Simulador de Filas de Porto
         </h1>
       </div>
     </header>

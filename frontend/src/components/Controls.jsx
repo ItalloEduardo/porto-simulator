@@ -1,5 +1,3 @@
-// src/components/Controls.jsx
-
 export default function Controls({
   params,
   setParams,
@@ -27,17 +25,6 @@ export default function Controls({
         className="p-2 bg-slate-700 border border-slate-600 rounded text-white focus:ring-2 focus:ring-cyan-500 focus:outline-none"
       />
 
-      <label className="font-semibold text-slate-300">Nº de Berços</label>
-      <input
-        type="number"
-        name="qtdBercos"
-        min="1"
-        max="10"
-        value={params.qtdBercos}
-        onChange={handleParamChange}
-        className="p-2 bg-slate-700 border border-slate-600 rounded text-white focus:ring-2 focus:ring-cyan-500 focus:outline-none"
-      />
-
       <label className="font-semibold text-slate-300">Tempo Médio de Chegada (horas)</label>
       <input
         type="number"
@@ -46,6 +33,21 @@ export default function Controls({
         onChange={handleParamChange}
         className="p-2 bg-slate-700 border border-slate-600 rounded text-white focus:ring-2 focus:ring-cyan-500 focus:outline-none"
       />
+
+      <label className="font-semibold text-slate-300">Nº de Berços</label>
+      <div className="flex items-center gap-3">
+        <input
+          type="range"
+          name="qtdBercos"
+          min="1"
+          max="8"
+          step="1"
+          value={params.qtdBercos}
+          onChange={handleParamChange}
+          className="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer"
+        />
+        <span className="font-mono text-cyan-400 w-10 text-center bg-slate-700 rounded-md py-1">{params.qtdBercos}</span>
+      </div>
 
       <label className="font-semibold text-slate-300">Tempo Médio de Atendimento (horas)</label>
       <input
