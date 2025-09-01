@@ -12,7 +12,7 @@ export default function Home() {
     tempo_medio_atendimento: 8,
   });
 
-  const [velocidade, setVelocidade] = useState(10);
+  const [velocidade, setVelocidade] = useState(2);
   const [simulando, setSimulando] = useState(false);
   
   const [logDeEventos, setLogDeEventos] = useState([]);
@@ -57,7 +57,7 @@ export default function Home() {
     <div className="flex flex-col min-h-screen">
       <Header />
       <main className="flex flex-1 gap-6 p-6">
-        <div className="flex-1 bg-slate-800 shadow-lg rounded-2xl p-4 flex justify-center items-center border border-slate-700 relative"> {/* Adicionado: position: relative */}
+        <div className="flex-1 bg-slate-800 shadow-lg rounded-2xl p-4 flex justify-center items-center border border-slate-700 relative">
           <Game
             logDeEventos={logDeEventos}
             velocidade={velocidade}

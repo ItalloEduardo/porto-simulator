@@ -63,13 +63,13 @@ export default function Controls({
         <input
           type="range"
           min="1"
-          max="50"
-          step="1"
+          max="5"
+          step="0.1"
           value={velocidade}
           onChange={(e) => setVelocidade(Number(e.target.value))}
           className="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer"
         />
-        <span className="font-mono text-cyan-400 w-10 text-center">{velocidade}x</span>
+        <span className="font-mono text-cyan-400 w-10 text-center">{velocidade.toFixed(1)}x</span>
       </div>
 
       <button
