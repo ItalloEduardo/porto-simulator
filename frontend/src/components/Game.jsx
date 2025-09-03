@@ -53,177 +53,160 @@ function desenharNavio(ctx, x, y, id, cor = "#38bdf8") {
 
 function preprocessarEventos(logDeEventos, layout, params) {
   const {
-    larguraCanvas, alturaCanvas, larguraPorto, posBercoX, posFilaX,
+    larguraCanvas, alturaCanvas, larguraPorto, posBercoX
   } = layout;
 
-  const paddingVertical = 20;
-  const areaUtilVertical = alturaCanvas - paddingVertical * 2;
-  const berthGap = areaUtilVertical / params.qtdBercos;
+  const LARGURA_NAVIO = 50;
+  const TEMPO_ENTRADA = 7.0;
+  const LARGURA_MAR = larguraCanvas - larguraPorto;
+  const PONTO_ESPERA_X = LARGURA_MAR * 0.9; 
 
-  const larguraMar = larguraCanvas - larguraPorto;
-  const minPercursoSea = Math.max(0, Math.floor(0.9 * larguraMar)); // ≥ 90%
   const berthInset = 15;
   const dockInDuration = 0.08;
   const departDuration = 0.5;
-  const minApproachDuration = 0.25;
 
   const porTempo = [...logDeEventos].sort((a, b) => a.tempo - b.tempo);
 
   const eventosPorNavio = new Map();
   for (const e of porTempo) {
-    if (!eventosPorNavio.has(e.navio_id)) eventosPorNavio.set(e.navio_id, {});
-    if (e.evento === 'chegou') eventosPorNavio.get(e.navio_id).tChegou = e.tempo;
-    if (e.evento === 'atracou') eventosPorNavio.get(e.navio_id).tAtracou = e.tempo;
-    if (e.evento === 'saiu') eventosPorNavio.get(e.navio_id).tSaiu = e.tempo;
+    if (!eventosPorNavio.has(e.navio_id)) {
+      eventosPorNavio.set(e.navio_id, { id: e.navio_id });
+    }
+    const navio = eventosPorNavio.get(e.navio_id);
+    if (e.evento === 'chegou') navio.tChegou = e.tempo;
+    if (e.evento === 'atracou') navio.tAtracouOriginal = e.tempo;
+    if (e.evento === 'saiu') navio.tSaiuOriginal = e.tempo;
   }
+  
+  const naviosOrdenadosPorChegada = Array.from(eventosPorNavio.values())
+    .filter(n => n.tChegou != null)
+    .sort((a, b) => a.tChegou - b.tChegou);
 
-  const berthState = Array(params.qtdBercos).fill(null);
-  const berthPorNavio = new Map();
+  const proximoTempoLivreBerco = Array(params.qtdBercos).fill(0);
+  const eventosSimulados = new Map();
 
-  for (const e of porTempo) {
-    if (e.evento === 'saiu') {
-      const berthIdx = berthPorNavio.get(e.navio_id);
-      if (berthIdx != null) {
-        if (berthState[berthIdx] === e.navio_id) berthState[berthIdx] = null;
+  for (const navio of naviosOrdenadosPorChegada) {
+    let melhorBercoIdx = 0;
+    for (let i = 1; i < params.qtdBercos; i++) {
+      if (proximoTempoLivreBerco[i] < proximoTempoLivreBerco[melhorBercoIdx]) {
+        melhorBercoIdx = i;
       }
     }
-    if (e.evento === 'atracou') {
-      let idx = berthState.findIndex(v => v == null);
-      if (idx === -1) {
-        idx = params.qtdBercos - 1;
-      }
-      berthState[idx] = e.navio_id;
-      berthPorNavio.set(e.navio_id, idx);
-    }
-  }
+    const tempoLivreDoMelhorBerco = proximoTempoLivreBerco[melhorBercoIdx];
+    
+    const tAtracouReal = Math.max(navio.tChegou, tempoLivreDoMelhorBerco);
 
+    let tSaiuReal;
+    if (navio.tAtracouOriginal != null && navio.tSaiuOriginal != null) {
+      const duracaoNoBerco = navio.tSaiuOriginal - navio.tAtracouOriginal;
+      tSaiuReal = tAtracouReal + duracaoNoBerco;
+    } else {
+      tSaiuReal = Number.POSITIVE_INFINITY;
+    }
+
+    proximoTempoLivreBerco[melhorBercoIdx] = tSaiuReal;
+    
+    eventosSimulados.set(navio.id, {
+      ...navio,
+      tAtracou: tAtracouReal,
+      tSaiu: tSaiuReal,
+      bercoDesignado: melhorBercoIdx
+    });
+  }
+  
   const segmentosPorNavio = new Map();
+  const paddingVertical = 20;
+  const areaUtilVertical = alturaCanvas - paddingVertical * 2;
+  const berthGap = areaUtilVertical / params.qtdBercos;
 
-  const berthCenterY = (idx) =>
-    paddingVertical + (berthGap * idx) + (berthGap / 2);
-
+  const berthCenterY = (idx) => paddingVertical + (berthGap * idx) + (berthGap / 2);
   const laneYForShip = (id) => {
     const laneIdx = (id % params.qtdBercos);
     return paddingVertical + (berthGap * laneIdx) + (berthGap / 2);
   };
-
-  for (const [id, times] of eventosPorNavio.entries()) {
-    const { tChegou = 0, tAtracou, tSaiu } = times;
+  
+  for (const [id, sim] of eventosSimulados.entries()) {
+    const { tChegou, tAtracou, tSaiu, bercoDesignado } = sim;
     const segs = [];
     const approachY = laneYForShip(id);
-    const assignedBerth = berthPorNavio.get(id) ?? 0;
-    const berthY = berthCenterY(assignedBerth);
-
-    const approachEndX = Math.max(0, posBercoX - berthInset - (larguraMar - minPercursoSea));
+    const berthY = berthCenterY(bercoDesignado);
     const dockX = posBercoX + berthInset;
 
-    if (tAtracou == null) {
-      const tStart = Math.max(0, tChegou);
-      const tEnd = Math.max(tStart + minApproachDuration, tStart + 0.5);
-      segs.push({
-        type: 'approach',
-        inicio: tStart,
-        fim: tEnd,
-        startX: 0,
-        startY: approachY,
-        endX: Math.min(posFilaX, larguraMar - 120),
-        endY: approachY,
-        color: "#f59e0b"
-      });
-      segmentosPorNavio.set(id, segs);
-      continue;
-    }
+    // 1. Segmento: Entrada (Da borda da tela até a fila)
+    segs.push({
+      type: 'entry',
+      inicio: Math.max(0, tChegou - TEMPO_ENTRADA),
+      fim: tChegou,
+      startX: -LARGURA_NAVIO, // Começa fora da tela
+      startY: approachY,
+      endX: PONTO_ESPERA_X,
+      endY: approachY,
+      color: "#38bdf8" // Azul
+    });
 
-    const tDockInStart = Math.max(0, tAtracou - dockInDuration);
-    const tApproachEnd = tDockInStart;
-    const tApproachStart = Math.max(0, Math.min(tChegou, tApproachEnd - minApproachDuration));
-
-    if (tChegou < tApproachStart) {
+    if (tAtracou > tChegou) {
+      // 2. Segmento: Espera (Parado na fila)
       segs.push({
         type: 'waiting',
         inicio: tChegou,
-        fim: tApproachStart,
-        startX: Math.min(posFilaX, larguraMar - 120),
+        fim: tAtracou,
+        startX: PONTO_ESPERA_X,
         startY: approachY,
-        endX: Math.min(posFilaX, larguraMar - 120),
+        endX: PONTO_ESPERA_X,
         endY: approachY,
-        color: "#f59e0b"
+        color: "#f59e0b" // Laranja
       });
     }
 
-    segs.push({
-      type: 'approach',
-      inicio: tApproachStart,
-      fim: Math.max(tApproachEnd, tApproachStart + minApproachDuration),
-      startX: 0,
-      startY: approachY,
-      endX: Math.min(approachEndX, posBercoX - berthInset - 5),
-      endY: approachY,
-      color: "#38bdf8"
-    });
-
+    // 3. Segmento: Atracação (Da fila para o berço)
     segs.push({
       type: 'dock-in',
-      inicio: tDockInStart,
-      fim: tAtracou,
-      startX: Math.min(approachEndX, posBercoX - berthInset - 5),
+      inicio: tAtracou,
+      fim: tAtracou + dockInDuration,
+      startX: PONTO_ESPERA_X,
       startY: approachY,
       endX: dockX,
       endY: berthY,
-      color: "#22c55e"
+      color: "#22c55e" // Verde
     });
 
-    if (tSaiu != null && tSaiu > tAtracou) {
-      segs.push({
-        type: 'dwell',
-        inicio: tAtracou,
-        fim: tSaiu,
-        startX: dockX,
-        startY: berthY,
-        endX: dockX,
-        endY: berthY,
-        color: "#22c55e"
-      });
-
-      segs.push({
-        type: 'depart',
-        inicio: tSaiu,
-        fim: tSaiu + departDuration,
-        startX: dockX,
-        startY: berthY,
-        endX: posBercoX + 250,
-        endY: berthY,
-        color: "#3b82f6"
-      });
-    } else {
-      segs.push({
-        type: 'dwell',
-        inicio: tAtracou,
-        fim: Number.POSITIVE_INFINITY,
-        startX: dockX,
-        startY: berthY,
-        endX: dockX,
-        endY: berthY,
-        color: "#22c55e"
-      });
+    // 4. Segmento: Permanência (Parado no berço)
+    segs.push({
+      type: 'dwell',
+      inicio: tAtracou + dockInDuration,
+      fim: tSaiu,
+      startX: dockX,
+      startY: berthY,
+      endX: dockX,
+      endY: berthY,
+      color: "#22c55e" // Verde
+    });
+    
+    if (tSaiu !== Number.POSITIVE_INFINITY) {
+        // 5. Segmento: Saída (Do berço para fora da tela)
+        segs.push({
+          type: 'depart',
+          inicio: tSaiu,
+          fim: tSaiu + departDuration,
+          startX: dockX,
+          startY: berthY,
+          endX: posBercoX + 250,
+          endY: berthY,
+          color: "#3b82f6" // Azul mais escuro
+        });
     }
-
+    
     segmentosPorNavio.set(id, segs);
   }
 
   const agendaBercos = [];
-  for (const [id, times] of eventosPorNavio.entries()) {
-    const berthIdx = berthPorNavio.get(id);
-    if (berthIdx == null) continue;
-    const { tAtracou, tSaiu } = times;
-    if (tAtracou != null) {
-      agendaBercos.push({
-        berthIdx,
-        id,
-        inicio: tAtracou,
-        fim: tSaiu ?? Number.POSITIVE_INFINITY
-      });
-    }
+  for (const sim of eventosSimulados.values()) {
+    agendaBercos.push({
+      berthIdx: sim.bercoDesignado,
+      id: sim.id,
+      inicio: sim.tAtracou,
+      fim: sim.tSaiu
+    });
   }
 
   return { segmentosPorNavio, agendaBercos };
@@ -241,14 +224,7 @@ function interpPos(seg, t) {
   };
 }
 
-export default function Game({
-  logDeEventos,
-  velocidade,
-  simulando,
-  setSimulando,
-  params,
-  cancelarSimulacao
-}) {
+export default function Game({ logDeEventos, velocidade, simulando, setSimulando, params, cancelarSimulacao }) {
   const canvasRef = useRef(null);
   const bgPatternRef = useRef(null);
   const animationFrameIdRef = useRef(null);
@@ -274,7 +250,6 @@ export default function Game({
     if (!isBgLoaded || !logDeEventos?.length) return null;
     const layout = { larguraCanvas, alturaCanvas, larguraPorto, posBercoX, posFilaX };
     return preprocessarEventos(logDeEventos, layout, params);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isBgLoaded, JSON.stringify(logDeEventos), params.qtdBercos]);
 
   useEffect(() => {
