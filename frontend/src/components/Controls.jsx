@@ -63,8 +63,8 @@ export default function Controls({
         <input
           type="range"
           min="1"
-          max="5"
-          step="0.1"
+          max="10"
+          step="0.5"
           value={velocidade}
           onChange={(e) => setVelocidade(Number(e.target.value))}
           className="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer"
