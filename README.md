@@ -67,4 +67,21 @@ O código-fonte está organizado da seguinte forma:
     uvicorn app.main:app --reload
     ```
 
+---
+
+## 🆕 Features a serem implementadas
+
+- organizar navios em fila, para não ficarem sobrepostos.
+- redimensionar componente de simulação para melhor enquadramento.
+- estilizar navios com svg (cor alterável).
+- animar descarregamento de mercadorias (caixas descendo).
+- adicionar animação de movimento e mudança de direção aos navios (rotação).
+- adicionar cálculos em dinheiro para tornar simulação mais realista.
+  - possibilidade do usuário inputar esses dados.
+- aleatorizar problemas de descarregamento das embarcações.
+  - gerar previsão de prejuízos($).
+- contabilizar quantidade de navios não atendidos, ao fim da simulação.
+  - e custo em dinheiro.
+
+
 > Coded by `@ItalloEduardo`

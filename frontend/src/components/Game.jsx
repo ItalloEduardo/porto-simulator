@@ -209,7 +209,7 @@ function preprocessarEventos(logDeEventos, layout, params) {
     });
   }
 
-  return { segmentosPorNavio, agendaBercos };
+  return { segmentosPorNavio, agendaBercos, eventosSimulados };
 }
 
 function interpPos(seg, t) {
@@ -235,6 +235,9 @@ export default function Game({ logDeEventos, velocidade, simulando, setSimulando
   const larguraPorto = 180;
   const posBercoX = larguraCanvas - larguraPorto + 40;
   const posFilaX = larguraCanvas - larguraPorto - 100;
+
+  const ESPACAMENTO_FILA = 20;
+  const FATOR_SUAVIZACAO = 0.05;
 
   useEffect(() => {
     const bgImage = new Image();
@@ -263,8 +266,9 @@ export default function Game({ logDeEventos, velocidade, simulando, setSimulando
       return;
     }
 
-    const { segmentosPorNavio, agendaBercos } = precomputed;
+    const { segmentosPorNavio, agendaBercos, eventosSimulados } = precomputed;
     const startTime = performance.now();
+    const lastShipPositionsRef = new Map();
 
     const desenharFrame = (currentTime) => {
       const tempoDecorrido = (currentTime - startTime) / 1000;
@@ -280,19 +284,51 @@ export default function Game({ logDeEventos, velocidade, simulando, setSimulando
       desenharCenario(ctx, bgPatternRef.current, larguraPorto, larguraCanvas, alturaCanvas);
       desenharBercos(ctx, berthsStatus, posBercoX, alturaCanvas, params);
 
+      const filaDeEspera = [];
+      for (const [id, segs] of segmentosPorNavio.entries()) {
+        for (const s of segs) {
+          if (s.type === 'waiting' && tempoPlayback >= s.inicio && tempoPlayback < s.fim) {
+            const tChegou = eventosSimulados.get(id).tChegou;
+            filaDeEspera.push({ id, tChegou });
+            break; 
+          }
+        }
+      }
+      filaDeEspera.sort((a, b) => a.tChegou - b.tChegou);
+
+      const posicoesAlvoFila = new Map();
+      filaDeEspera.forEach((item, index) => {
+        const segWaiting = segmentosPorNavio.get(item.id).find(s => s.type === 'waiting');
+        const targetX = segWaiting.startX - (index * ESPACAMENTO_FILA);
+        posicoesAlvoFila.set(item.id, targetX);
+      });
+
       for (const [id, segs] of segmentosPorNavio.entries()) {
         let drawn = false;
         for (let i = 0; i < segs.length; i++) {
           const s = segs[i];
-          if (tempoPlayback <= s.fim) {
-            const { x, y } = interpPos(s, tempoPlayback);
+          if (tempoPlayback <= s.fim && tempoPlayback >= s.inicio) {
+            let x, y;
+
+            if (s.type === 'waiting') {
+              const targetX = posicoesAlvoFila.get(id);
+              const lastPos = lastShipPositionsRef.get(id) || { x: targetX, y: s.startY };
+              
+              const newX = lastPos.x + (targetX - lastPos.x) * FATOR_SUAVIZACAO;
+              
+              x = newX;
+              y = s.startY;
+            } else {
+              const pos = interpPos(s, tempoPlayback);
+              x = pos.x;
+              y = pos.y;
+            }
+
             desenharNavio(ctx, x, y, id, s.color);
+            lastShipPositionsRef.set(id, { x, y });
             drawn = true;
             break;
           }
-        }
-        if (!drawn) {
-          // passou de todos os segmentos → não desenhar (já saiu do canvas)
         }
       }
 
@@ -319,7 +355,9 @@ export default function Game({ logDeEventos, velocidade, simulando, setSimulando
     larguraCanvas,
     alturaCanvas,
     larguraPorto,
-    posBercoX
+    posBercoX,
+    ESPACAMENTO_FILA,
+    FATOR_SUAVIZACAO
   ]);
 
   return (
